@@ -1,13 +1,10 @@
 package com.retailcloud.empmgt.model.payload;
 
-import com.retailcloud.empmgt.model.entity.*;
 import com.retailcloud.empmgt.model.entity.enums.Role;
-import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
 
 
 

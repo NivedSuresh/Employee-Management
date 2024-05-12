@@ -1,6 +1,5 @@
 package com.retailcloud.empmgt.model.entity.enums;
 
-import java.util.HashSet;
 import java.util.Set;
 
 public enum Role {

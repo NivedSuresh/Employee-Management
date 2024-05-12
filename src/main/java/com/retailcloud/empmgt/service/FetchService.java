@@ -2,7 +2,9 @@ package com.retailcloud.empmgt.service;
 
 import com.retailcloud.empmgt.advice.exception.BranchNotFoundException;
 import com.retailcloud.empmgt.advice.exception.DepartmentNotFoundException;
+import com.retailcloud.empmgt.advice.exception.EmployeeAdditionFailureException;
 import com.retailcloud.empmgt.advice.exception.EmployeeNotFoundException;
+import com.retailcloud.empmgt.model.Projection.RoleAndBranchId;
 import com.retailcloud.empmgt.model.entity.Branch;
 import com.retailcloud.empmgt.model.entity.Department;
 import com.retailcloud.empmgt.model.entity.Employee;
@@ -42,5 +44,10 @@ public class FetchService {
 
     public Employee findEmployeeByIdAndRoleAndDepartmentElseThrow(final Long id, final Role role, final Department department, final String message) {
         return this.employeeRepo.findByEmployeeIdAndRoleAndDepartment(id, role, department).orElseThrow(() -> new EmployeeNotFoundException(message));
+    }
+
+    public RoleAndBranchId findRoleAndBranchIdElseThrow(final Long principalId, final String message){
+        return     this.employeeRepo.findRoleAndBranchIdById(principalId).orElseThrow(() -> new EmployeeAdditionFailureException(message));
+
     }
 }

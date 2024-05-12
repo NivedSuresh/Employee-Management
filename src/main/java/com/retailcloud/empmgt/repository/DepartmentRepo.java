@@ -1,6 +1,5 @@
 package com.retailcloud.empmgt.repository;
 
-import com.retailcloud.empmgt.model.entity.Branch;
 import com.retailcloud.empmgt.model.entity.Department;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

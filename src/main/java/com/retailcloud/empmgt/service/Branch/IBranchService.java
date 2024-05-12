@@ -7,6 +7,13 @@ import com.retailcloud.empmgt.repository.BranchRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+
+
+/**
+ * Adding or updating branch information should only be allowed for
+ * Roles with chief access, endpoint access should be restricted
+ * from gateway/auth server using claims for better performance.
+ **/
 @Service
 @RequiredArgsConstructor
 public class IBranchService implements BranchService {

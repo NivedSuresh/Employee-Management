@@ -1,6 +1,5 @@
 package com.retailcloud.empmgt.config.CommandLineRunners;
 
-import com.retailcloud.empmgt.model.entity.Branch;
 import com.retailcloud.empmgt.model.entity.Department;
 import com.retailcloud.empmgt.model.entity.Employee;
 import com.retailcloud.empmgt.model.entity.enums.Role;

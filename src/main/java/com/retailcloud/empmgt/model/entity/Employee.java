@@ -63,12 +63,6 @@ public class Employee {
     private Address personalAddress;
 
 
-    /* Branch can be set to lazy as branch will be fetched by department
-     * which is fetched eagerly which fetches branch eagerly */
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    @JoinColumn(name = "branch_id")
-    private Branch branchDetails;
-
 
     @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, mappedBy = "employee")
     private List<MonthlySalaryMeta> paidSalaries;

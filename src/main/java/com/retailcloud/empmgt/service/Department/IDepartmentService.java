@@ -1,7 +1,7 @@
 package com.retailcloud.empmgt.service.Department;
 
 import com.retailcloud.empmgt.advice.exception.DepartmentAdditionFailureException;
-import com.retailcloud.empmgt.advice.exception.NoAccessToCreateDepartmentException;
+import com.retailcloud.empmgt.advice.exception.OutOfScopeException;
 import com.retailcloud.empmgt.config.RolesConfig.CompanyRoles;
 import com.retailcloud.empmgt.model.entity.Branch;
 import com.retailcloud.empmgt.model.entity.Department;
@@ -19,6 +19,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.Objects;
 
+
+
+
+/**
+ * Adding or updating department information should only be allowed for
+ * Roles with chief/manager access, endpoint access should be restricted
+ * from gateway/auth server using claims for better performance.
+ * */
 @RequiredArgsConstructor
 @Service
 public class IDepartmentService implements DepartmentService {
@@ -27,6 +35,11 @@ public class IDepartmentService implements DepartmentService {
     private final DepartmentRepo departmentRepo;
     private final FetchService fetchService;
 
+
+
+    /*
+    * Roles that should be allowed to access this endpoint -> All roles in any access / Branch Manager
+    * */
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Department addDepartment(final NewDepartment newDepartment, final Long principalId) {
@@ -39,18 +52,20 @@ public class IDepartmentService implements DepartmentService {
         /*
         * Fetching principal can be skipped if the claims appended from the gateway
         * has more information for the authenticated user. ie branchId and Role
+        *
+        * Branch Managers are only allowed to add/update departments from their own branch.
         * */                                                                                /* Unknown error as principal user should be present in db as he is authenticated */
         final Employee principal = this.fetchService.findEmployeeByIdElseThrow(principalId, "Unknown error, failed to proceed!");
         Branch principalBranch = null;
 
-        /* *
-         * If the authenticated user's (branch Id != new dept branch id) or role
-         * doesn't have sufficient authority, throw NoAccessToCreateDepartmentException.
+        /*
+         * Not part of any access authority meaning principal could be a part of
+         * a branch ie manager/similar roles that will be added in the future.
          * */
         if (!companyRoles.anyAccessAuthority().contains(principal.getRole())) {
-            principalBranch = principal.getBranchDetails();
+            principalBranch = principal.getDepartment().getBranch();
             if(!Objects.equals(principalBranch.getBranchId(), newDepartment.branchId())) {
-                throw new NoAccessToCreateDepartmentException();
+                throw new OutOfScopeException("User doesn't have the necessary permissions to create a department in a branch other than their own branch.");
             }
         }
 

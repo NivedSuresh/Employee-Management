@@ -1,6 +1,5 @@
 package com.retailcloud.empmgt.model.payload;
 
-import com.retailcloud.empmgt.model.entity.Address;
 import com.retailcloud.empmgt.model.entity.enums.Role;
 import jakarta.validation.constraints.*;
 
