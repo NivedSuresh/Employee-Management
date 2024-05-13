@@ -22,9 +22,9 @@ public record NewAddress(
         @NotEmpty(message = "State must not be empty")
         String state,
 
-        @NotNull(message = "Zipcode must not be null")
+        @NotEmpty(message = "Zipcode must not be null")
         @Size(min = 5, max = 10, message = "Zipcode must be between 5 and 10 digits")
-        Integer zipcode,
+        String zipcode,
 
         @NotEmpty(message = "Country must not be empty")
         String country,

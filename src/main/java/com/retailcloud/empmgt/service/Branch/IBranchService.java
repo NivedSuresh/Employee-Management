@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
  **/
 @Service
 @RequiredArgsConstructor
-public class IBranchService implements BranchService {
+class IBranchService implements BranchService {
 
     private final BranchRepo branchRepo;
 
@@ -24,8 +24,8 @@ public class IBranchService implements BranchService {
     @Override
     public Branch addBranch(NewBranch newBranch) {
 
-        if(this.branchRepo.existsByZipcode(newBranch.zipcode())){
-            throw new BranchAlreadyExistsException(newBranch.zipcode());
+        if(this.branchRepo.existsByZipcodeOrEmailOrPhoneNumber(newBranch.zipcode(), newBranch.email(), newBranch.phoneNumber())){
+            throw new BranchAlreadyExistsException();
         }
 
         final Branch branch = Branch.builder()

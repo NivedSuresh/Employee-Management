@@ -2,10 +2,8 @@ package com.retailcloud.empmgt;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.retailcloud.empmgt.advice.response.ErrorResponse;
-import com.retailcloud.empmgt.model.payload.BranchDto;
-import com.retailcloud.empmgt.model.payload.DepartmentDto;
-import com.retailcloud.empmgt.model.payload.NewBranch;
-import com.retailcloud.empmgt.model.payload.NewDepartment;
+import com.retailcloud.empmgt.model.entity.enums.Role;
+import com.retailcloud.empmgt.model.payload.*;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -36,6 +34,7 @@ class OrderedTests {
 
     @Autowired ObjectMapper mapper;
     @Autowired MockMvc mvc;
+    private final FakerService fakerService = new FakerService();
 
     @Container
     @ServiceConnection
@@ -57,6 +56,11 @@ class OrderedTests {
         assertThat(postgres.isRunning()).isTrue();
     }
 
+
+    /**
+    * Branch Id generated will be 2 as a default branch is being generated
+    * by @{@link com.retailcloud.empmgt.config.CommandLineRunners.InitialInsertionIfNotExists}
+    * */
     @Test
     @Order(2)
     void addBranchTest() throws Exception {
@@ -70,7 +74,7 @@ class OrderedTests {
                 "673008",
                 "India",
                 "0987654321",
-                "info@retailcloud.com"
+                "info@retailcloudcalicut.com"
         );
 
         final String newBranchJSON = this.mapper.writeValueAsString(newBranch);
@@ -82,8 +86,6 @@ class OrderedTests {
                 .andExpect(result -> {
                     String contentAsString = result.getResponse().getContentAsString();
                     BranchDto branchDto = mapper.readValue(contentAsString, BranchDto.class);
-
-                    System.out.println(branchDto);
 
                     Assertions.assertNotNull(branchDto.branchId());
                     Assertions.assertEquals(branchDto.zipcode(), newBranch.zipcode());
@@ -100,6 +102,7 @@ class OrderedTests {
 
 
     }
+
 
 
     @Test
@@ -136,6 +139,7 @@ class OrderedTests {
     }
 
 
+    /** Department Id generated will be 1  **/
     @Test
     @Order(4)
     public void succeedAddDepartment() throws Exception
@@ -164,5 +168,133 @@ class OrderedTests {
                     Assertions.assertEquals(0, departmentDto.getEmployeeCount());
                 });
     }
+
+    /**
+     * Employee Id generated will be 2 as a default employee is being generated
+     * by @{@link com.retailcloud.empmgt.config.CommandLineRunners.InitialInsertionIfNotExists}
+     * */
+    @Test
+    @Order(5)
+    public void succeedAddEmployee() throws Exception {
+
+        /* Add COO */
+        final NewEmployee newCoo = this.fakerService.getNewEmployee(
+                Role.CHIEF_OPERATING_OFFICER,
+                null, /* COO won't have another reporting manager as he's the top level employee */
+                null, /* BranchId = null  as COO shouldn't be associated with a specific branch but the whole institution. */
+                null /* DeptId = null. Shouldn't assign COO a department. Only employees <= DEPT HEAD can be assigned to a department. */
+                );
+
+        this.mvc.perform(MockMvcRequestBuilders.post("/employee")
+                .header(HttpHeaders.AUTHORIZATION, "1") //EmployeeId of Default Employee with all perms.
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(newCoo)))
+                .andExpect(status().isCreated())
+                .andExpect(result -> {
+                    String contentAsString = result.getResponse().getContentAsString();
+                    EmployeeDto employeeDto = mapper.readValue(contentAsString, EmployeeDto.class);
+
+                    Assertions.assertEquals(employeeDto.getRole(), Role.CHIEF_OPERATING_OFFICER);
+                    /* COO won't be associated with a single department */
+                    Assertions.assertNull(employeeDto.getDepartment());
+
+                    /* COO won't have another reporting manager as he's the top level employee */
+                    Assertions.assertNull(employeeDto.getReportingManager());
+                });
+    }
+
+    @Test
+    @Order(6)
+    public void addEmployeeManager() throws Exception {
+        final NewEmployee newBranchManager = this.fakerService.getNewEmployee(
+                Role.BRANCH_MANAGER,
+                2L, /* is associated with coo that was created from method 5 */
+                1L, /* is associated with the branch id that was created from method 2 */
+                null /* Shouldn't be associated with a particular department */
+        );
+
+
+        this.mvc.perform(MockMvcRequestBuilders.post("/employee")
+                        .header(HttpHeaders.AUTHORIZATION, "2") //EmployeeId of the recently created coo from method 5
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(newBranchManager)))
+                .andExpect(status().isCreated())
+                .andExpect(result -> {
+                    String contentAsString = result.getResponse().getContentAsString();
+                    EmployeeDto employeeDto = mapper.readValue(contentAsString, EmployeeDto.class);
+
+                    Assertions.assertEquals(employeeDto.getRole(), Role.BRANCH_MANAGER);
+                    /* Branch manager won't be associated with a single department */
+                    Assertions.assertNull(employeeDto.getDepartment());
+
+                    /* Manager should be associated with recently created coo */
+                    Assertions.assertNotNull(employeeDto.getReportingManager());
+                    /* COO which was created from method 5*/
+                    Assertions.assertEquals(employeeDto.getReportingManager().getEmployeeId(), 2L);
+                    /* Manager should report to the COO */
+                    Assertions.assertEquals(Role.CHIEF_OPERATING_OFFICER, employeeDto.getReportingManager().getRole());
+                });
+    }
+
+
+
+
+    /**
+     * Method should fail as the manager shouldn't be allowed to add an employee with an authority
+     * which is above his own scope.
+     * */
+    @Test
+    @Order(7)
+    public void failAddCoo() throws Exception {
+
+        final NewEmployee newBranchManager = this.fakerService.getNewEmployee(
+                Role.CHIEF_OPERATING_OFFICER,
+                null,
+                null,
+                null
+        );
+
+
+        this.mvc.perform(MockMvcRequestBuilders.post("/employee")
+                        .header(HttpHeaders.AUTHORIZATION, "3") //EmployeeId of the recently created branch manager from method 6
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(newBranchManager)))
+                .andExpect(status().isBadRequest())
+                .andExpect(result -> {
+                    String contentAsString = result.getResponse().getContentAsString();
+                    ErrorResponse errorResponse = mapper.readValue(contentAsString, ErrorResponse.class);
+
+                    /* TODO: should be replaced with an error code rather than message as error messages might change in future. */
+                    Assertions.assertEquals(errorResponse.message(), "Authenticated user doesn't have necessary permissions to assign this role to an employee!!");
+                });
+    }
+
+
+    @Test
+    @Order(8)
+    public void addDepartmentHead() throws Exception{
+        final NewEmployee newBranchManager = this.fakerService.getNewEmployee(
+                Role.BRANCH_DEPARTMENT_HEAD,
+                3L, /* Refers to the Branch Manager that was successfully added from method 6 */
+                1L,  /* Refers to the branch that was added from method 2 */
+                1L /* Refers to the dept that was created from method 4 */
+        );
+
+
+        this.mvc.perform(MockMvcRequestBuilders.post("/employee")
+                        .header(HttpHeaders.AUTHORIZATION, "3") //EmployeeId of the recently created branch manager from method 6
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(newBranchManager)))
+                .andExpect(status().isCreated())
+                .andExpect(result -> {
+                    String contentAsString = result.getResponse().getContentAsString();
+                    EmployeeDto employeeDto = mapper.readValue(contentAsString, EmployeeDto.class);
+
+                    Assertions.assertEquals(employeeDto.getDepartment().getDeptId(), 1L);
+                    Assertions.assertEquals(employeeDto.getDepartment().getDeptHeadId(), employeeDto.getEmployeeId());
+                });
+    }
+
+
 
 }

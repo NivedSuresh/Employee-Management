@@ -10,6 +10,8 @@ import java.util.Set;
 @ConfigurationProperties(prefix = "company")
 public record CompanyRoles(
         Set<Role> roles,
-        Set<Role> anyAccessAuthority
+        Set<Role> anyAccessAuthority,
+        Set<Role> noDepartmentRequired,
+        Set<Role> noBranchRequired
 ) {
 }

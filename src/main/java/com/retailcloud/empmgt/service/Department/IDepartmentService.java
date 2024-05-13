@@ -10,6 +10,7 @@ import com.retailcloud.empmgt.model.entity.enums.Role;
 import com.retailcloud.empmgt.model.payload.DeptHeadUpdate;
 import com.retailcloud.empmgt.model.payload.NewDepartment;
 import com.retailcloud.empmgt.repository.DepartmentRepo;
+import com.retailcloud.empmgt.repository.EmployeeRepo;
 import com.retailcloud.empmgt.service.FetchService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -29,11 +30,12 @@ import java.util.Objects;
  * */
 @RequiredArgsConstructor
 @Service
-public class IDepartmentService implements DepartmentService {
+class IDepartmentService implements DepartmentService {
 
     private final CompanyRoles companyRoles;
     private final DepartmentRepo departmentRepo;
     private final FetchService fetchService;
+    private final EmployeeRepo employeeRepo;
 
 
 
@@ -93,7 +95,7 @@ public class IDepartmentService implements DepartmentService {
         return this.departmentRepo.save(department);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRED)
     @Override
     public Department assignNewHeadForDept(DeptHeadUpdate update)
     {
@@ -104,10 +106,38 @@ public class IDepartmentService implements DepartmentService {
         employee.setRole(Role.BRANCH_DEPARTMENT_HEAD);
 
         Employee prevDeptHead = department.getDeptHead();
-        prevDeptHead.setRole(Role.UNDEFINED);
+        if(prevDeptHead != null){
+            prevDeptHead.setRole(Role.UNDEFINED);
+            prevDeptHead.setDepartment(null);
+            this.employeeRepo.save(prevDeptHead);
+        }
+        else
+        {
+            department.setIsActive(true);
+        }
+
 
         department.setDeptHead(employee);
         return departmentRepo.save(department);
+    }
+
+
+    @Transactional(propagation = Propagation.REQUIRED)
+    @Override
+    public Department assignNewHeadForDept(Department department, Employee employee) {
+        Employee deptHead = department.getDeptHead();
+
+        if(deptHead != null){
+            deptHead.setRole(Role.UNDEFINED);
+            deptHead.setDepartment(null);
+            this.employeeRepo.save(deptHead);
+        }
+        else department.setIsActive(true);
+
+        department.setDeptHead(employee);
+        employee.setDepartment(department);
+
+        return this.departmentRepo.save(department);
     }
 
 

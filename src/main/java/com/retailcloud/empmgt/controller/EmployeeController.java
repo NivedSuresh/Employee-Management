@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.*;
@@ -28,6 +30,7 @@ public class EmployeeController {
 
 
     private final EmployeeService employeeService;
+    private final ModelMapper modelMapper;
 
 
     /**
@@ -42,12 +45,14 @@ public class EmployeeController {
     }
 
 
+
     @PostMapping
     public ResponseEntity<EmployeeDto> addEmployee(@Validated @RequestBody final NewEmployee newEmployee,
                                                    @RequestHeader(HttpHeaders.AUTHORIZATION) final Long principalId)
     {
         final Employee employee = this.employeeService.addEmployee(newEmployee, principalId);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ModelMapper.toDto(employee, true));
+        EmployeeDto dto = modelMapper.toDto(employee, true, true);
+        return ResponseEntity.status(HttpStatus.CREATED).body(dto);
     }
 
 

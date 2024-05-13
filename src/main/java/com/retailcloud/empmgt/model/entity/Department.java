@@ -24,7 +24,7 @@ public class Department {
     @Column(nullable = false)
     private String deptName;
 
-    @OneToOne(fetch = FetchType.EAGER)
+    @OneToOne(fetch = FetchType.EAGER, cascade = {CascadeType.PERSIST})
     @JoinColumn(name = "dept_head_id")
     private Employee deptHead;
 
@@ -33,6 +33,8 @@ public class Department {
 
     @Column(name = "is_active")
     private Boolean isActive;
+
+    private boolean isDeleted;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "branch_id", updatable = false, nullable = false)

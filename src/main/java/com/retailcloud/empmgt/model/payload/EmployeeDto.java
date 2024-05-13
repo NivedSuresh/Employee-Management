@@ -38,4 +38,6 @@ public class EmployeeDto {
 
     private EmployeeDto reportingManager;
 
+    private BranchDto branch;
+
 }

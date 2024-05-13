@@ -10,6 +10,6 @@ public interface BranchRepo extends JpaRepository<Branch, Long> {
 
     Branch findByZipcode(final String zipcode);
 
-    boolean existsByZipcode(final String zipcode);
+    boolean existsByZipcodeOrEmailOrPhoneNumber(final String zipcode, final String email, final String phoneNumber);
 
 }

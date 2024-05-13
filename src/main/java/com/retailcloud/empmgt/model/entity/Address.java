@@ -24,7 +24,7 @@ public class Address {
 
     private String state;
 
-    private Integer zipcode;
+    private String zipcode;
 
     private String country;
 

@@ -23,7 +23,10 @@ public record NewEmployee(
         @PastOrPresent(message = "Employee join date should be in the past or present")
         LocalDate employeeJoinDate,
 
-        @NotNull(message = "Please provide the department ID")
+
+        /* ROLES ABOVE DEPT HEAD WON'T HAVE A DEPARTMENT, THE CHECK IF MADE MANUALLY
+        *  EVERYTIME A NEW EMPLOYEE IS ADDED. */
+//        @NotNull(message = "Please provide the department ID")
         Long departmentId,
 
         @NotNull(message = "Please provide the employee role")
@@ -39,7 +42,10 @@ public record NewEmployee(
         @NotNull(message = "Please provide the personal address")
         NewAddress personalAddress,
 
-        @NotNull(message = "Please provide the branch ID")
+
+        /* ROLES ABOVE BRANCH MANAGER WON'T HAVE A BRANCH, THE CHECK IS MADE MANUALLY
+         *  EVERYTIME A NEW EMPLOYEE IS ADDED. */
+//        @NotNull(message = "Please provide the branch ID")
         Long branchId,
 
         LocalDateTime exitDate

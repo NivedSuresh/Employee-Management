@@ -1,8 +1,8 @@
 package com.retailcloud.empmgt.config.CommandLineRunners;
 
-import com.retailcloud.empmgt.model.entity.Department;
 import com.retailcloud.empmgt.model.entity.Employee;
 import com.retailcloud.empmgt.model.entity.enums.Role;
+import com.retailcloud.empmgt.repository.BranchRepo;
 import com.retailcloud.empmgt.repository.DepartmentRepo;
 import com.retailcloud.empmgt.repository.EmployeeRepo;
 import lombok.RequiredArgsConstructor;
@@ -35,11 +35,12 @@ public class InitialInsertionIfNotExists implements CommandLineRunner {
 
     private final EmployeeRepo employeeRepo;
     private final DepartmentRepo departmentRepo;
+    private final BranchRepo branchRepo;
 
     @Override
     public void run(String... args) {
 
-        log.warn("Profile has either dev, sim or test in it, thus Initial Employee Insertion is triggered.");
+        log.warn("Initial Employee Insertion has been triggered. Ensure the project is not running in production.");
 
         if(this.employeeRepo.existsById(1L)){
             return;
@@ -47,38 +48,55 @@ public class InitialInsertionIfNotExists implements CommandLineRunner {
 
         LocalDate date = LocalDate.now().minusYears(50);
 
-        /*
-        * Dept will be activated here as dept is directly being saved to database.
-        * */
-        Department department = departmentRepo.findById(1L).orElse(departmentRepo.save(
-                Department.builder()
-                        .deptId(Long.MAX_VALUE)
-                        .deptName("CHIEF_OFFICERS_DEPT")
-                        .deptHead(null)
-                        .creationDate(date)
-                        .isActive(true)
-                        .branch(null)
-                        .build()
-        ));
+
+        /* Default branch */
+//        Branch branch = this.branchRepo.findById(1L).orElse(
+////                this.branchRepo.save(
+//                        Branch.builder()
+//                        .buildingName("Retail Cloud Default")
+//                        .zipcode("ALL")
+//                        .country("ALL")
+//                        .street("ALL")
+//                        .city("ALL")
+//                        .state("ALL")
+//                        .email("info@retailcloud.com")
+//                        .phoneNumber("NONE")
+//                        .build()
+////        )
+//        );
+
+        /* Dept will be activated here as dept is directly being saved to database. */
+//        Department department = departmentRepo.findById(1L)
+//                .orElse(
+//                        departmentRepo.save(
+//                        Department.builder()
+//                            .deptId(Long.MAX_VALUE)
+//                            .deptName("DEFAULT_DEPT")
+//                            .deptHead(null)
+//                            .creationDate(date)
+//                            .isActive(true)
+//                            .branch(branch)
+//                            .build()
+//                ));
 
 
         Employee employee = Employee.builder()
                 .employeeId(1L)
-                .department(department)
+                .department(null)
                 .dob(date)
                 .firstName("Default")
                 .middleName("Chief")
                 .lastName("Access")
                 .employeeJoinDate(date)
-                .branchDetails(null)
-                .role(Role.DEFAULT_CHIEF_ACCESS)
+                .role(Role.INITIAL_CHIEF_ACCESS)
                 .exitDate(null)
                 .yearlyBonusPercentage(null)
                 .paidSalaries(null)
                 .reportingManager(null)
                 .personalAddress(null)
+                .branch(null)
                 .build();
 
-        System.out.println("EmpID: " + this.employeeRepo.save(employee).getEmployeeId());
+        this.employeeRepo.save(employee);
     }
 }
