@@ -1,8 +1,9 @@
 package com.retailcloud.empmgt.controller;
 
+import com.retailcloud.empmgt.model.payload.Message;
 import com.retailcloud.empmgt.model.entity.Department;
 import com.retailcloud.empmgt.model.payload.DepartmentDto;
-import com.retailcloud.empmgt.model.payload.DeptHeadUpdate;
+import com.retailcloud.empmgt.model.payload.EmployeeDepartmentUpdate;
 import com.retailcloud.empmgt.model.payload.NewDepartment;
 import com.retailcloud.empmgt.service.Department.DepartmentService;
 import com.retailcloud.empmgt.utils.mapper.ModelMapper;
@@ -56,9 +57,23 @@ public class DepartmentController {
 
 
     @PutMapping("/head")
-    public ResponseEntity<DepartmentDto> updateDepartmentHead(@Validated @RequestBody final DeptHeadUpdate update){
-        Department department = this.departmentService.assignNewHeadForDept(update);
+    public ResponseEntity<DepartmentDto> updateDepartmentHead(@Validated @RequestBody final EmployeeDepartmentUpdate update,
+                                                              @RequestHeader(HttpHeaders.AUTHORIZATION) final Long principalId){
+        Department department = this.departmentService.assignNewHeadForDept(update, principalId);
         return ResponseEntity.accepted().body(ModelMapper.toDto(department));
+    }
+
+
+    /**
+     * Only authorized user's should be able to access this endpoint.
+     * ie BranchManagers, COO, Initial acc
+     **/
+    @DeleteMapping("{deptId}")
+    public ResponseEntity<Message> deleteDepartment(@PathVariable final Long deptId,
+                                                    @RequestHeader(HttpHeaders.AUTHORIZATION) final Long principalId)
+    {
+        this.departmentService.deleteDepartment(deptId, principalId);
+        return ResponseEntity.ok(Message.builder().message("Successfully removed department from the branch!").build());
     }
 
 

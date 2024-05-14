@@ -3,7 +3,7 @@ package com.retailcloud.empmgt.service.Department;
 
 import com.retailcloud.empmgt.model.entity.Department;
 import com.retailcloud.empmgt.model.entity.Employee;
-import com.retailcloud.empmgt.model.payload.DeptHeadUpdate;
+import com.retailcloud.empmgt.model.payload.EmployeeDepartmentUpdate;
 import com.retailcloud.empmgt.model.payload.NewDepartment;
 
 /*
@@ -13,7 +13,9 @@ import com.retailcloud.empmgt.model.payload.NewDepartment;
 public interface DepartmentService {
     Department addDepartment(NewDepartment newDepartment, Long employeeId);
 
-    Department assignNewHeadForDept(DeptHeadUpdate update);
+    Department assignNewHeadForDept(EmployeeDepartmentUpdate update, Long principalId);
 
-    Department assignNewHeadForDept(Department department, Employee employee);
+    Department assignNewHeadForDept(Department department, Employee employee, boolean validatePermissions, Long principalId, boolean updateRmForTeamsLeads);
+
+    void deleteDepartment(Long deptId, Long principalId);
 }

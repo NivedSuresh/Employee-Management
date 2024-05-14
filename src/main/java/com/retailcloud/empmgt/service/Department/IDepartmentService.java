@@ -1,16 +1,18 @@
 package com.retailcloud.empmgt.service.Department;
 
 import com.retailcloud.empmgt.advice.exception.DepartmentAdditionFailureException;
+import com.retailcloud.empmgt.advice.exception.EntityOperationFailureException;
 import com.retailcloud.empmgt.advice.exception.OutOfScopeException;
 import com.retailcloud.empmgt.config.RolesConfig.CompanyRoles;
 import com.retailcloud.empmgt.model.entity.Branch;
 import com.retailcloud.empmgt.model.entity.Department;
 import com.retailcloud.empmgt.model.entity.Employee;
 import com.retailcloud.empmgt.model.entity.enums.Role;
-import com.retailcloud.empmgt.model.payload.DeptHeadUpdate;
+import com.retailcloud.empmgt.model.payload.EmployeeDepartmentUpdate;
 import com.retailcloud.empmgt.model.payload.NewDepartment;
 import com.retailcloud.empmgt.repository.DepartmentRepo;
 import com.retailcloud.empmgt.repository.EmployeeRepo;
+import com.retailcloud.empmgt.service.AuthorizationService;
 import com.retailcloud.empmgt.service.FetchService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -36,22 +38,21 @@ class IDepartmentService implements DepartmentService {
     private final DepartmentRepo departmentRepo;
     private final FetchService fetchService;
     private final EmployeeRepo employeeRepo;
+    private final AuthorizationService authorizationService;
 
 
 
-    /*
-    * Roles that should be allowed to access this endpoint -> All roles in any access / Branch Manager
-    * */
+    /** Roles that should be allowed to access this endpoint -> All roles in any access/Branch Manager **/
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Department addDepartment(final NewDepartment newDepartment, final Long principalId) {
 
 
         if (this.departmentRepo.existsByBranchAndDeptName(newDepartment.branchId(), newDepartment.deptName())) {
-            throw new DepartmentAdditionFailureException("Department already exists for the branch!");
+            throw new DepartmentAdditionFailureException("The department already exists in this branch. If the department is inactive or was previously deleted, reactivate it by assigning a department head.");
         }
 
-        /*
+        /* *
         * Fetching principal can be skipped if the claims appended from the gateway
         * has more information for the authenticated user. ie branchId and Role
         *
@@ -65,7 +66,7 @@ class IDepartmentService implements DepartmentService {
          * a branch ie manager/similar roles that will be added in the future.
          * */
         if (!companyRoles.anyAccessAuthority().contains(principal.getRole())) {
-            principalBranch = principal.getDepartment().getBranch();
+            principalBranch = principal.getBranch();
             if(!Objects.equals(principalBranch.getBranchId(), newDepartment.branchId())) {
                 throw new OutOfScopeException("User doesn't have the necessary permissions to create a department in a branch other than their own branch.");
             }
@@ -74,70 +75,127 @@ class IDepartmentService implements DepartmentService {
         final Branch branch = principalBranch != null ? principalBranch :
                               this.fetchService.findBranchByIdElseThrow(newDepartment.branchId());
 
-        final Employee deptHead = newDepartment.deptHeadId() == null ? null :
-                this.fetchService.findByEmployeeIdAndRoleElseThrow(
-                        newDepartment.branchId(), Role.BRANCH_DEPARTMENT_HEAD
-                );
+        final Employee deptHeadToBe = newDepartment.deptHeadId() == null ? null :
+                this.fetchService.findEmployeeByIdElseThrow(newDepartment.deptHeadId(), "Employee not found!");
 
-        if (deptHead == null && newDepartment.activateDepartment()) {
+
+        if (deptHeadToBe == null && newDepartment.activateDepartment()) {
             throw new DepartmentAdditionFailureException("Department cannot be activated with out a department head, recreate again with a department head!");
         }
 
         Department department = Department.builder()
                 .deptName(newDepartment.deptName())
-                .deptHead(deptHead)
-                .employeeCount(deptHead == null ? 0 : 1)
+                .deptHead(deptHeadToBe)
                 .branch(branch)
                 .isActive(newDepartment.activateDepartment())
                 .creationDate(LocalDate.now())
                 .build();
 
+        if(deptHeadToBe != null){
+            return this.assignNewHeadForDept(department, deptHeadToBe, false, null, false);
+        }
+
         return this.departmentRepo.save(department);
     }
 
     @Transactional(propagation = Propagation.REQUIRED)
     @Override
-    public Department assignNewHeadForDept(DeptHeadUpdate update)
+    public Department assignNewHeadForDept(EmployeeDepartmentUpdate update, Long principalId)
     {
         Department department = this.fetchService.findDepartmentByIdElseThrow(update.deptId(), "Failed to find department!");
-        Employee employee = this.fetchService.findEmployeeByIdElseThrow(update.newHeadId(), "Operation failed: failure finding employee.");
+
+        this.authorizationService.validateUserPermissionsForDepartment(principalId, department);
+
+        Employee employee = this.fetchService.findEmployeeByIdElseThrow(update.movableEmployeeId(), "Operation failed: failure finding employee.");
 
         employee.setDepartment(department);
+        employee.setBranch(department.getBranch());
         employee.setRole(Role.BRANCH_DEPARTMENT_HEAD);
 
+        this.updateDepartmentAndPrevHead(department);
+
+        department.setDeptHead(employee);
+        /* Update reporting manager for new dept head */
+        Employee reportingManager = this.fetchService.findByBranchAndRoleElseNull(department.getBranch(), Role.BRANCH_MANAGER, null);
+        employee.setReportingManager(reportingManager);
+        department = departmentRepo.save(department);
+
+        /* After updating the dept head assign the reporting manager for the team lead as the new employee */
+        this.updateTeamLeadsAfterNewDeptHead(department);
+
+        return department;
+    }
+
+
+    @Transactional(propagation = Propagation.REQUIRED)
+    @Override
+    public Department assignNewHeadForDept(final Department department,
+                                           final Employee employee,
+                                           final boolean validatePermissions,
+                                           final Long principalId,
+                                           final boolean updateRmForTeamsLeads) {
+
+        if(validatePermissions){
+            this.authorizationService.validateUserPermissionsForDepartment(principalId, department);
+        }
+
+        this.updateDepartmentAndPrevHead(department);
+        employee.setDepartment(department);
+        employee.setBranch(department.getBranch());
+        /* After updating the dept head assign the reporting manager for the team lead as the new employee */
+        if(updateRmForTeamsLeads) this.updateTeamLeadsAfterNewDeptHead(department);
+
+        department.setDeptHead(employee);
+        return this.departmentRepo.save(department);
+    }
+
+    private void updateTeamLeadsAfterNewDeptHead(Department department) {
+        /* After updating the dept head assign the reporting manager for the team lead as the new employee */
+        this.employeeRepo.updateRmForTeamLeads(department, department.getDeptHead(), Role.TEAM_LEAD);
+    }
+
+
+    @Transactional(propagation = Propagation.SUPPORTS)
+    void updateDepartmentAndPrevHead(Department department) {
         Employee prevDeptHead = department.getDeptHead();
         if(prevDeptHead != null){
             prevDeptHead.setRole(Role.UNDEFINED);
             prevDeptHead.setDepartment(null);
+            prevDeptHead.setReportingManager(null);
             this.employeeRepo.save(prevDeptHead);
         }
         else
         {
             department.setIsActive(true);
+            department.setDeleted(false);
         }
 
-
-        department.setDeptHead(employee);
-        return departmentRepo.save(department);
     }
 
 
-    @Transactional(propagation = Propagation.REQUIRED)
+    /**
+     * Only authorized user's should be able to access this endpoint.
+     * ie BranchManagers, COO, Initial acc
+     * */
     @Override
-    public Department assignNewHeadForDept(Department department, Employee employee) {
-        Employee deptHead = department.getDeptHead();
+    public void deleteDepartment(Long deptId, Long principalId) {
 
-        if(deptHead != null){
-            deptHead.setRole(Role.UNDEFINED);
-            deptHead.setDepartment(null);
-            this.employeeRepo.save(deptHead);
+        Department department = this.fetchService.findDepartmentByIdElseThrow(deptId, "Failed to delete department! Reason: Department not found.");
+
+        /* Check if the user has any access roles, if so proceed. Else check
+           if the user is a manager and is part of the same branch. */
+        this.authorizationService.validateUserPermissionsForDepartment(principalId, department);
+
+        final Long employeeCount = this.employeeRepo.countByDepartmentAndExitDate(department, null);
+
+        if(employeeCount > 0){
+            throw new EntityOperationFailureException("Cannot delete department as there are employees assigned to this department!");
         }
-        else department.setIsActive(true);
 
-        department.setDeptHead(employee);
-        employee.setDepartment(department);
+        department.setDeleted(true);
+        department.setIsActive(false);
 
-        return this.departmentRepo.save(department);
+        this.departmentRepo.save(department);
     }
 
 

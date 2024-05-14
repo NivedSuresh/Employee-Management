@@ -1,6 +1,7 @@
 package com.retailcloud.empmgt.controller;
 
 import com.retailcloud.empmgt.model.entity.Employee;
+import com.retailcloud.empmgt.model.payload.EmployeeDepartmentUpdate;
 import com.retailcloud.empmgt.model.payload.EmployeeDto;
 import com.retailcloud.empmgt.model.payload.NewEmployee;
 import com.retailcloud.empmgt.service.Employee.EmployeeService;
@@ -10,8 +11,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.*;
@@ -55,5 +54,13 @@ public class EmployeeController {
         return ResponseEntity.status(HttpStatus.CREATED).body(dto);
     }
 
+
+    @PutMapping("/move")
+    public ResponseEntity<EmployeeDto> moveEmployee(@Validated @RequestBody final EmployeeDepartmentUpdate update,
+                                                    @RequestHeader(HttpHeaders.AUTHORIZATION) final Long principalId)
+    {
+        final Employee employee = this.employeeService.moveEmployeeToDepartment(update, principalId);
+        return ResponseEntity.ok(this.modelMapper.toDto(employee, true, true));
+    }
 
 }

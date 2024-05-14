@@ -49,37 +49,6 @@ public class InitialInsertionIfNotExists implements CommandLineRunner {
         LocalDate date = LocalDate.now().minusYears(50);
 
 
-        /* Default branch */
-//        Branch branch = this.branchRepo.findById(1L).orElse(
-////                this.branchRepo.save(
-//                        Branch.builder()
-//                        .buildingName("Retail Cloud Default")
-//                        .zipcode("ALL")
-//                        .country("ALL")
-//                        .street("ALL")
-//                        .city("ALL")
-//                        .state("ALL")
-//                        .email("info@retailcloud.com")
-//                        .phoneNumber("NONE")
-//                        .build()
-////        )
-//        );
-
-        /* Dept will be activated here as dept is directly being saved to database. */
-//        Department department = departmentRepo.findById(1L)
-//                .orElse(
-//                        departmentRepo.save(
-//                        Department.builder()
-//                            .deptId(Long.MAX_VALUE)
-//                            .deptName("DEFAULT_DEPT")
-//                            .deptHead(null)
-//                            .creationDate(date)
-//                            .isActive(true)
-//                            .branch(branch)
-//                            .build()
-//                ));
-
-
         Employee employee = Employee.builder()
                 .employeeId(1L)
                 .department(null)
@@ -88,7 +57,7 @@ public class InitialInsertionIfNotExists implements CommandLineRunner {
                 .middleName("Chief")
                 .lastName("Access")
                 .employeeJoinDate(date)
-                .role(Role.INITIAL_CHIEF_ACCESS)
+                .role(Role.COMPLETE_AUTHORITY)
                 .exitDate(null)
                 .yearlyBonusPercentage(null)
                 .paidSalaries(null)

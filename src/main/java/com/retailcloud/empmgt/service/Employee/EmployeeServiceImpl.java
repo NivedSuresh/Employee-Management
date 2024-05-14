@@ -2,12 +2,13 @@ package com.retailcloud.empmgt.service.Employee;
 
 import com.retailcloud.empmgt.advice.exception.*;
 import com.retailcloud.empmgt.config.RolesConfig.CompanyRoles;
-import com.retailcloud.empmgt.model.Projection.EmployeeInfo;
 import com.retailcloud.empmgt.model.Projection.PrincipalRoleAndBranch;
 import com.retailcloud.empmgt.model.entity.*;
 import com.retailcloud.empmgt.model.entity.enums.Role;
+import com.retailcloud.empmgt.model.payload.EmployeeDepartmentUpdate;
 import com.retailcloud.empmgt.model.payload.NewEmployee;
 import com.retailcloud.empmgt.repository.EmployeeRepo;
+import com.retailcloud.empmgt.service.AuthorizationService;
 import com.retailcloud.empmgt.service.Department.DepartmentService;
 import com.retailcloud.empmgt.service.FetchService;
 import com.retailcloud.empmgt.utils.mapper.ModelMapper;
@@ -30,6 +31,7 @@ class EmployeeServiceImpl implements EmployeeService
     private final FetchService fetchService;
     private final CompanyRoles companyRoles;
     private final DepartmentService departmentService;
+    private final AuthorizationService authorizationService;
 
 
     @Transactional(propagation = Propagation.REQUIRED)
@@ -62,14 +64,15 @@ class EmployeeServiceImpl implements EmployeeService
 
         // Fetching the reporting manager if reporting manager ID is provided in the request.
         // Exception is thrown if reporting manager role doesn't align with employee role.
-        final Employee reportingManager = this.fetchReportingManager(newEmployee.reportingManagerId(), newEmployee.role(), department);
+        final Employee reportingManager = this.fetchService.fetchReportingManager(newEmployee.reportingManagerId(), newEmployee.role(), department);
 
         final Branch branch = getBranchForNewEmployee(newEmployee, department, reportingManager);
 
-        if(newEmployee.role() == Role.BRANCH_MANAGER){
+        /* Untag previous branch manager before persisting the employee */
+        if(employee.getRole() == Role.BRANCH_MANAGER)
+        {
             this.untagPreviousManager(branch);
         }
-
 
         final Address address = ModelMapper.toEntity(newEmployee.personalAddress(), false);
 
@@ -82,23 +85,34 @@ class EmployeeServiceImpl implements EmployeeService
         employee.setDepartment(department);
         employee.setRole(newEmployee.role());
         employee.setYearlyBonusPercentage(newEmployee.yearlyBonusPercentage());
+        employee.setSalary(newEmployee.salary());
         employee.setReportingManager(reportingManager);
         employee.setPersonalAddress(address);
         employee.setBranch(branch);
 
+        /* If the newly added employee is a dept head update the same in department
+           table as well Update reporting manager for all team leads under this dept. */
+        if(newEmployee.role() == Role.BRANCH_DEPARTMENT_HEAD)
+        {
+            Department updatedDept = this.departmentService.assignNewHeadForDept(department, employee, false, null, true);
 
-        /* If the newly added employee is a dept head update the same in department table as well */
-        if(newEmployee.role() == Role.BRANCH_DEPARTMENT_HEAD) {
-            Department updatedDept = this.departmentService.assignNewHeadForDept(department, employee);
             return updatedDept.getDeptHead();
         }
 
-        return this.employeeRepo.save(employee);
+        employee = this.employeeRepo.save(employee);
+
+        if(employee.getRole() == Role.BRANCH_MANAGER)
+        {
+            /* Set new employee as the reporting manager for every dept head */
+           this.employeeRepo.updateRmForDeptHeads(employee.getBranch(), employee, Role.BRANCH_DEPARTMENT_HEAD);
+        }
+
+        return employee;
     }
 
     private Employee untagPreviousManager(Branch branch) {
         if(branch == null) throw new BranchNotFoundException();
-        Employee prevManager = this.fetchService.findByBranchAndRoleElseNull(branch, Role.BRANCH_MANAGER);
+        Employee prevManager = this.fetchService.findByBranchAndRoleElseNull(branch, Role.BRANCH_MANAGER, null);
         if(prevManager != null){
             prevManager.setRole(Role.UNDEFINED);
             prevManager.setReportingManager(null);
@@ -116,7 +130,7 @@ class EmployeeServiceImpl implements EmployeeService
         }
 
         // This step can potentially be optimized by appending the role and branch ID to the request after authorization from the gateway.
-        final PrincipalRoleAndBranch principalMeta = this.fetchService.findRoleAndBranchIdElseThrow(principalId, "An unknown error occurred, if this was from our side please let us know!");
+        final PrincipalRoleAndBranch principalMeta = this.fetchService.findRoleAndBranchIdElseThrow(principalId);
 
 
         // Important check: Ensuring that the principal is not assigning a role higher than their own scope to the new employee.
@@ -156,30 +170,51 @@ class EmployeeServiceImpl implements EmployeeService
     }
 
 
-    @Transactional(propagation = Propagation.SUPPORTS)
-    public Employee fetchReportingManager(final Long reportingManagerId, final Role newEmployeeRole, final Department department)
-    {
-        final String exMessage = "Reporting manager not found!";
-        switch (newEmployeeRole)
-        {
-            case JUNIOR_ASSISTANT, SENIOR_ASSISTANT ->
-            {
-                return this.fetchService.findEmployeeByIdAndRoleAndDepartmentElseThrow(reportingManagerId, Role.JUNIOR_ASSISTANT.getReportingManagerRole(), department, exMessage);
-            }
-            case TEAM_LEAD ->
-            {
-                return department != null ? department.getDeptHead() : null;
-            }
-            case BRANCH_DEPARTMENT_HEAD, BRANCH_MANAGER ->
-            {
-                return this.fetchService.findByEmployeeIdAndRoleElseThrow(reportingManagerId, newEmployeeRole.getReportingManagerRole());
-            }
-            default ->
-            {
-                return null;
-            }
+    /**
+     * Access to the endpoint should be limited to COO & Branch Manager.
+     * <br>
+     * If employee is a Branch Manager or COO throw exception.
+     * */
+    @Override
+    public Employee moveEmployeeToDepartment(EmployeeDepartmentUpdate update, Long principalId) {
+
+        Employee employee = this.fetchService.findEmployeeByIdElseThrow(update.movableEmployeeId(), "Couldn't move employee as employee cannot be found!");
+        if(employee.getDepartment() != null && Objects.equals(employee.getDepartment().getDeptId(), update.deptId())){
+            throw new EntityOperationFailureException("Employee is already part of the department!");
         }
+
+        if(Role.BRANCH_DEPARTMENT_HEAD.getRolesAbove().contains(employee.getRole())){
+            throw new EmployeeCannotBeMovedException("Employee cannot be moved as the role of the current employee");
+        }
+
+        if(employee.getRole() == Role.BRANCH_DEPARTMENT_HEAD){
+            Department department = this.departmentService.assignNewHeadForDept(update, principalId);
+            return department.getDeptHead();
+        }
+
+
+        final PrincipalRoleAndBranch roleAndBranch = this.fetchService.findRoleAndBranchIdElseThrow(principalId);
+        /* Check is principal has permissions to do updates on employee department */
+        this.authorizationService.validateUserPermissionsForDepartment(employee.getDepartment(), roleAndBranch);
+
+        /* Check is principal has permissions to do updates on the department which employee should be moved to */
+        final Department deptTobeMovedTo = this.fetchService.findDepartmentByIdElseThrow(update.deptId(), "Failed to find the department!");
+        if(!deptTobeMovedTo.getIsActive()){
+            throw new DepartmentNotActiveException();
+        }
+        this.authorizationService.validateUserPermissionsForDepartment(deptTobeMovedTo, roleAndBranch);
+
+
+        /* Check if employee is team lead of any department if so update junior/senior assistants reporting manager */
+        if(employee.getRole() == Role.TEAM_LEAD){
+            this.employeeRepo.updateRmForLowLevelEmployees(employee, null);
+        }
+
+        employee.setDepartment(deptTobeMovedTo);
+        employee.setBranch(deptTobeMovedTo.getBranch());
+        return this.employeeRepo.save(employee);
     }
+
 
 
 }

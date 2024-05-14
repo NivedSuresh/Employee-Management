@@ -3,8 +3,6 @@ package com.retailcloud.empmgt.model.entity;
 import com.retailcloud.empmgt.model.entity.enums.Role;
 import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -49,6 +47,7 @@ public class Employee {
 
 
     private Double yearlyBonusPercentage;
+    private Double salary;
 
 
     @ManyToOne(fetch = FetchType.LAZY)

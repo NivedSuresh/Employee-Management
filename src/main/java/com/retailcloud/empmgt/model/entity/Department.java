@@ -34,13 +34,11 @@ public class Department {
     @Column(name = "is_active")
     private Boolean isActive;
 
-    private boolean isDeleted;
+    private boolean deleted;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "branch_id", updatable = false, nullable = false)
     private Branch branch;
-
-    private Integer employeeCount;
 
     @Version
     private long version;

@@ -19,6 +19,5 @@ public class DepartmentDto {
     private LocalDate creationDate;
     private Boolean isActive;
     private BranchDto branch;
-    private Integer employeeCount;
 
 }

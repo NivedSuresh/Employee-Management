@@ -8,8 +8,12 @@ import com.retailcloud.empmgt.model.payload.NewAddress;
 import com.retailcloud.empmgt.model.payload.NewEmployee;
 
 import java.time.LocalDate;
+import java.util.Random;
 
 public class FakerService {
+
+
+    final Random random = new Random();
 
     private final Faker faker = new Faker();
     public NewAddress getAddress() {
@@ -43,6 +47,7 @@ public class FakerService {
                 departmentId,
                 role,
                 10.0,
+                random.nextDouble(30000, 1000000),
                 reportingMangerId,
                 commonAddress,
                 branchId,

@@ -33,6 +33,7 @@ public class EmployeeDto {
     private Role role;
 
     private Double yearlyBonusPercentage;
+    private Double salary;
 
     private LocalDateTime exitDate;
 

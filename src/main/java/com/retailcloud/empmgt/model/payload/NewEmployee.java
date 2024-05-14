@@ -37,6 +37,10 @@ public record NewEmployee(
         @DecimalMax(value = "100.0", message = "Yearly bonus percentage must be less than or equal to 100")
         Double yearlyBonusPercentage,
 
+
+        @NotNull(message = "Salary cannot be empty!")
+        Double salary,
+
         Long reportingManagerId,
 
         @NotNull(message = "Please provide the personal address")

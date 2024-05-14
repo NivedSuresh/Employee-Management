@@ -37,7 +37,6 @@ public class ModelMapper {
                 .creationDate(department.getCreationDate())
                 .branch(toDto(department.getBranch()))
                 .deptHeadFullName(getEmployeeFullName(department.getDeptHead()))
-                .employeeCount(department.getEmployeeCount())
                 .build();
     }
 
@@ -97,6 +96,7 @@ public class ModelMapper {
                 .department(toDto(employee.getDepartment()))
                 .role(employee.getRole())
                 .yearlyBonusPercentage(employee.getYearlyBonusPercentage())
+                .salary(employee.getSalary())
                 .exitDate(employee.getExitDate())
                 .reportingManager(reportingManager)
                 .branch(branch)
