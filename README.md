@@ -37,9 +37,10 @@ Additionally, the project has comments added to each method, and the test cases 
 
 NB: Throughout the project, comments are added to each and every method, and the test cases are also well-documented.
 
+<br>
 
 #### Improvements that can be Made
 
-       * Methods could have been made easier to debug if less emphasis was placed on DRY (Don't Repeat Yourself) principles and they were split up. (Realized this too late in the project.)
+       * Methods could have been made easier to debug if less emphasis was placed on DRY principles and they were split up. (Realized this too late in the project.)
        * Implementing in-memory caching.
        * Integration of Swagger for better API documentation and testing.
