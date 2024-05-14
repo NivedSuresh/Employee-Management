@@ -42,5 +42,6 @@ NB: Throughout the project, comments are added to each and every method, and the
 #### Improvements that can be Made
 
        * Methods could have been made easier to debug if less emphasis was placed on DRY principles and they were split up. (Realized this too late in the project.)
+       * How the application functions logically can be improved as well.
        * Implementing in-memory caching.
        * Integration of Swagger for better API documentation and testing.
