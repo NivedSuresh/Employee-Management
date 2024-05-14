@@ -1,20 +1,20 @@
 package com.retailcloud.empmgt.controller;
 
-import com.retailcloud.empmgt.model.payload.Message;
+import com.retailcloud.empmgt.model.payload.*;
 import com.retailcloud.empmgt.model.entity.Department;
-import com.retailcloud.empmgt.model.payload.DepartmentDto;
-import com.retailcloud.empmgt.model.payload.EmployeeDepartmentUpdate;
-import com.retailcloud.empmgt.model.payload.NewDepartment;
 import com.retailcloud.empmgt.service.Department.DepartmentService;
 import com.retailcloud.empmgt.utils.mapper.ModelMapper;
 import com.retailcloud.empmgt.utils.validation.PayloadValidator;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 
 /**
@@ -30,6 +30,7 @@ public class DepartmentController {
 
 
     private final DepartmentService departmentService;
+    private final ModelMapper modelMapper;
 
     /**
      * Trims white spaces from user input.
@@ -76,5 +77,11 @@ public class DepartmentController {
         return ResponseEntity.ok(Message.builder().message("Successfully removed department from the branch!").build());
     }
 
+
+    @GetMapping
+    public ResponseEntity<PagedEntity<DepartmentDto>> fetchAllDepartments(@RequestParam(value = "page", required = false) Integer page, @RequestParam(value = "count", required = false) Integer count){
+        PagedEntity<DepartmentDto> pagedEntity = this.departmentService.fetchDepartments(page, count);
+        return ResponseEntity.ok(pagedEntity);
+    }
 
 }

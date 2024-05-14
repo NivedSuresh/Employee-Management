@@ -1,13 +1,17 @@
 package com.retailcloud.empmgt;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.retailcloud.empmgt.advice.exception.DepartmentNotFoundException;
 import com.retailcloud.empmgt.model.entity.Department;
 import com.retailcloud.empmgt.model.entity.Employee;
 import com.retailcloud.empmgt.model.payload.Message;
 import com.retailcloud.empmgt.model.entity.Branch;
 import com.retailcloud.empmgt.model.entity.enums.Role;
 import com.retailcloud.empmgt.model.payload.*;
+import com.retailcloud.empmgt.repository.EmployeeRepo;
 import com.retailcloud.empmgt.service.Branch.BranchService;
+import com.retailcloud.empmgt.service.Department.DepartmentService;
 import com.retailcloud.empmgt.service.Employee.EmployeeService;
 import com.retailcloud.empmgt.service.FetchService;
 import org.junit.jupiter.api.*;
@@ -28,6 +32,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -44,6 +50,8 @@ class OrderedTests {
     @Autowired BranchService branchService;
     @Autowired FetchService fetchService;
     @Autowired EmployeeService employeeService;
+    @Autowired DepartmentService departmentService;
+    @Autowired EmployeeRepo employeeRepo;
     private final FakerService fakerService = new FakerService();
 
     @Container
@@ -433,6 +441,8 @@ class OrderedTests {
                     Assertions.assertEquals(employeeDto.getDepartment().getDeptHeadId(), 4);
                     Assertions.assertNotNull(employeeDto.getBranch());
                 });
+
+
     }
 
 
@@ -484,6 +494,7 @@ class OrderedTests {
     @Order(13)
     public void updateDepartmentHead() throws Exception {
 
+
         /* Assigning new head to the department. The id will point to the recently
         * created team lead from method 10  */
         EmployeeDepartmentUpdate update = new EmployeeDepartmentUpdate(1L, 6L);
@@ -528,6 +539,7 @@ class OrderedTests {
         Assertions.assertEquals(prevHead.getRole(), Role.UNDEFINED);
         Assertions.assertNull(prevHead.getReportingManager());
 
+
     }
 
 
@@ -552,6 +564,7 @@ class OrderedTests {
     @Test
     @Order(15)
     public void addDevops() throws Exception {
+
         NewDepartment newDepartment1 = new NewDepartment(
                 "DEVOPS",
                 4L,
@@ -610,24 +623,110 @@ class OrderedTests {
 
 
 
-    /**
-     * Tests will be written without MockMvc from now onwards for better readability
-     * */
     @Test
     @Order(16)
-    public void moveAllEmployeesToDepartment2(){
+    public void moveAllEmployeesToDepartment2() throws Exception {
+
+        /* 5 is team lead, 6 is dept head, 7 is junior assistant. */
+        long[] lowLevelEmployeesDept1 = {5, 7};
+
+        for(long empId : lowLevelEmployeesDept1){
+
+            EmployeeDepartmentUpdate update = new EmployeeDepartmentUpdate(2L, empId);
+
+            this.mvc.perform(MockMvcRequestBuilders.put("/employee/move")
+                            .header(HttpHeaders.AUTHORIZATION, 3)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(mapper.writeValueAsString(update)))
+                    .andExpect(status().isOk())
+                    .andExpect(result -> {
+                        String contentAsString = result.getResponse().getContentAsString();
+                        EmployeeDto employeeDto = mapper.readValue(contentAsString, EmployeeDto.class);
+
+                        /* verify if they moved department */
+                        Assertions.assertEquals(employeeDto.getDepartment().getDeptId(), 2L);
+                        Assertions.assertEquals(employeeDto.getDepartment().getDeptHeadId(), 4L);
+                    });
+        }
 
         /*
-        * 5 is team lead.
-        * 6 is dept head.
-        * 7 is junior assistant.
-        * */
-        long[] allEmployeesInDepartment1 = {5, 6, 7};
+             To test, create a new department and assign employee with ID 6 as its department head.
+             Alternatively, assign a different role to employee with ID 6 in a different branch.
+             Won't implement these methods in application due to time constraints.
+             */
 
-        for(long empId : allEmployeesInDepartment1){
-            EmployeeDepartmentUpdate update = new EmployeeDepartmentUpdate(2L, empId);
-            this.employeeService.moveEmployeeToDepartment(update, 3L);
+        NewDepartment newDepartment = new NewDepartment(
+                "Random",
+                null,
+                false,
+                1L
+        );
+        Department department = this.departmentService.addDepartment(newDepartment, 3L);
+
+
+        EmployeeDepartmentUpdate update = new EmployeeDepartmentUpdate(department.getDeptId(), 6L);
+        this.mvc.perform(MockMvcRequestBuilders.put("/employee/move")
+                        .header(HttpHeaders.AUTHORIZATION, 3)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(update)))
+                .andExpect(status().isOk())
+                .andExpect(result -> {
+                    String contentAsString = result.getResponse().getContentAsString();
+                    EmployeeDto employeeDto = mapper.readValue(contentAsString, EmployeeDto.class);
+
+                    /* verify if they moved department */
+                    Assertions.assertEquals(employeeDto.getDepartment().getDeptId(), 3L);
+                    Assertions.assertEquals(employeeDto.getDepartment().getDeptHeadId(), 6L);
+                });
+
+        Long employeeCountForDept2 = employeeRepo.countByDepartmentAndExitDate(this.fetchService.findDepartmentByIdElseThrow(1L, ""), null);
+        Assertions.assertEquals(employeeCountForDept2, 0);
+
+
+        Long employeeCountForDept3 = employeeRepo.countByDepartmentAndExitDate(this.fetchService.findDepartmentByIdElseThrow(3L, ""), null);
+        Assertions.assertEquals(employeeCountForDept3, 1);
+
+    }
+
+
+    /** After previous method employee count for the department 1 is zero
+     *  meaning it should be eligible for deletion */
+    @Test
+    @Order(17)
+    public void deleteDepartment() throws Exception {
+        this.mvc.perform(MockMvcRequestBuilders.delete("/department/1")
+                        .header(HttpHeaders.AUTHORIZATION, 3))
+                .andExpect(status().isOk());
+
+
+        Exception exception = null;
+        try{
+            this.fetchService.findDepartmentByIdElseThrow(1L, "From test");
         }
+        catch (DepartmentNotFoundException ex){
+            exception = ex;
+        }
+        Assertions.assertNotNull(exception);
+        Assertions.assertEquals(exception.getMessage(), "From test");
+    }
+
+
+    @Test
+    @Order(18)
+    public void fetchAllDepartments() throws Exception{
+        this.mvc.perform(MockMvcRequestBuilders.get("/department?page=1&count=1"))
+                .andExpect(status().isOk())
+                .andExpect(result -> {
+                    String contentAsString = result.getResponse().getContentAsString();
+                    PagedEntity<DepartmentDto> pagedEntity = mapper.readValue(contentAsString, new TypeReference<>() {});
+
+                    Assertions.assertEquals(pagedEntity.getEntityList().size(), 1);
+                    Assertions.assertEquals(pagedEntity.getPage(), 1);
+                    Assertions.assertEquals(pagedEntity.getTotalPages(), 2); /* 2 departments as dept 1 was deleted */
+                    Assertions.assertFalse(pagedEntity.isHasPrev());
+                    Assertions.assertTrue(pagedEntity.isHasNext());
+                });
+
     }
 
 

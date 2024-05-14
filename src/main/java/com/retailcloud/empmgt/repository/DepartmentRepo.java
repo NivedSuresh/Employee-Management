@@ -1,6 +1,9 @@
 package com.retailcloud.empmgt.repository;
 
 import com.retailcloud.empmgt.model.entity.Department;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.PagingAndSortingRepository;
@@ -16,4 +19,5 @@ public interface DepartmentRepo extends JpaRepository<Department, Long>, PagingA
 
     Optional<Department> findByDeptIdAndDeleted(final Long deptId, final  boolean fetchDeleted);
 
+    Page<Department> findAllByDeleted(boolean deleted, Pageable pageable);
 }

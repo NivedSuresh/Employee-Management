@@ -5,15 +5,12 @@ import com.retailcloud.empmgt.model.entity.Address;
 import com.retailcloud.empmgt.model.entity.Branch;
 import com.retailcloud.empmgt.model.entity.Department;
 import com.retailcloud.empmgt.model.entity.Employee;
-import com.retailcloud.empmgt.model.entity.enums.Role;
-import com.retailcloud.empmgt.model.payload.BranchDto;
-import com.retailcloud.empmgt.model.payload.DepartmentDto;
-import com.retailcloud.empmgt.model.payload.EmployeeDto;
-import com.retailcloud.empmgt.model.payload.NewAddress;
+import com.retailcloud.empmgt.model.payload.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 
 @Component
@@ -116,4 +113,5 @@ public class ModelMapper {
                 .zipcode(newAddress.zipcode())
                 .build();
     }
+
 }

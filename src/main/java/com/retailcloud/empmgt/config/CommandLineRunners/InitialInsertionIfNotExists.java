@@ -5,8 +5,11 @@ import com.retailcloud.empmgt.model.entity.enums.Role;
 import com.retailcloud.empmgt.repository.BranchRepo;
 import com.retailcloud.empmgt.repository.DepartmentRepo;
 import com.retailcloud.empmgt.repository.EmployeeRepo;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -31,14 +34,12 @@ import java.time.LocalDate;
 @Profile({"sim", "test", "dev"})
 @Slf4j
 @Component
-public class InitialInsertionIfNotExists implements CommandLineRunner {
+public class InitialInsertionIfNotExists{
 
     private final EmployeeRepo employeeRepo;
-    private final DepartmentRepo departmentRepo;
-    private final BranchRepo branchRepo;
 
-    @Override
-    public void run(String... args) {
+    @PostConstruct
+    public void run() {
 
         log.warn("Initial Employee Insertion has been triggered. Ensure the project is not running in production.");
 

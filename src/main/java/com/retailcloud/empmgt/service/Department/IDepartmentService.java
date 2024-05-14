@@ -8,18 +8,24 @@ import com.retailcloud.empmgt.model.entity.Branch;
 import com.retailcloud.empmgt.model.entity.Department;
 import com.retailcloud.empmgt.model.entity.Employee;
 import com.retailcloud.empmgt.model.entity.enums.Role;
+import com.retailcloud.empmgt.model.payload.DepartmentDto;
 import com.retailcloud.empmgt.model.payload.EmployeeDepartmentUpdate;
 import com.retailcloud.empmgt.model.payload.NewDepartment;
+import com.retailcloud.empmgt.model.payload.PagedEntity;
 import com.retailcloud.empmgt.repository.DepartmentRepo;
 import com.retailcloud.empmgt.repository.EmployeeRepo;
 import com.retailcloud.empmgt.service.AuthorizationService;
 import com.retailcloud.empmgt.service.FetchService;
+import com.retailcloud.empmgt.utils.mapper.ModelMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Objects;
 
 
@@ -92,6 +98,9 @@ class IDepartmentService implements DepartmentService {
                 .build();
 
         if(deptHeadToBe != null){
+            if(deptHeadToBe.getRole() == Role.BRANCH_DEPARTMENT_HEAD){
+                throw new EntityOperationFailureException("The assigned department head is already allocated to a department as it's head!");
+            }
             return this.assignNewHeadForDept(department, deptHeadToBe, false, null, false);
         }
 
@@ -107,6 +116,8 @@ class IDepartmentService implements DepartmentService {
         this.authorizationService.validateUserPermissionsForDepartment(principalId, department);
 
         Employee employee = this.fetchService.findEmployeeByIdElseThrow(update.movableEmployeeId(), "Operation failed: failure finding employee.");
+
+        this.employeeRepo.updateRmForLowLevelEmployees(employee, null);
 
         employee.setDepartment(department);
         employee.setBranch(department.getBranch());
@@ -135,8 +146,17 @@ class IDepartmentService implements DepartmentService {
                                            final Long principalId,
                                            final boolean updateRmForTeamsLeads) {
 
+
+        if(employee.getRole()  == Role.BRANCH_DEPARTMENT_HEAD){
+            employee.getDepartment().setDeptHead(null);
+        }
+
         if(validatePermissions){
             this.authorizationService.validateUserPermissionsForDepartment(principalId, department);
+        }
+
+        if(Role.JUNIOR_ASSISTANT.getRolesAbove().contains(employee.getRole()) && employee.getEmployeeId() != null){
+            this.employeeRepo.updateRmForLowLevelEmployees(employee, null);
         }
 
         this.updateDepartmentAndPrevHead(department);
@@ -196,6 +216,26 @@ class IDepartmentService implements DepartmentService {
         department.setIsActive(false);
 
         this.departmentRepo.save(department);
+    }
+
+    @Override
+    public PagedEntity<DepartmentDto> fetchDepartments(Integer page, Integer count)
+    {
+        if(page == null || page < 1) page = 1;
+        if(count == null || count < 1) count = 20;
+        else if(count > 30) count = 30;
+
+        PageRequest pageRequest = PageRequest.of(page - 1, count);
+        Page<Department> departmentPage = this.departmentRepo.findAllByDeleted(false, pageRequest);
+
+        List<DepartmentDto> departmentDtos = departmentPage.getContent().stream().map(ModelMapper::toDto).toList();
+        return PagedEntity.<DepartmentDto>builder()
+                .entityList(departmentDtos)
+                .page(page)
+                .hasNext(departmentPage.hasNext())
+                .hasPrev(departmentPage.hasPrevious())
+                .totalPages(departmentPage.getTotalPages())
+                .build();
     }
 
 

@@ -42,7 +42,7 @@ class EmployeeServiceImpl implements EmployeeService
 
         final Department department = this.fetchService.findDepartmentByRoleAndIdElseNull(newEmployee.role(), newEmployee.departmentId());
         if(newEmployee.departmentId() != null && department == null){
-            throw new DepartmentNotFoundException("Operation failed: Failed to associate a department with the employee. NB: Do not try to assign a department to authorities above Dept Head.");
+            throw new DepartmentNotFoundException("Couldn't find the department.");
         }
 
 
@@ -95,7 +95,6 @@ class EmployeeServiceImpl implements EmployeeService
         if(newEmployee.role() == Role.BRANCH_DEPARTMENT_HEAD)
         {
             Department updatedDept = this.departmentService.assignNewHeadForDept(department, employee, false, null, true);
-
             return updatedDept.getDeptHead();
         }
 
@@ -176,20 +175,22 @@ class EmployeeServiceImpl implements EmployeeService
      * If employee is a Branch Manager or COO throw exception.
      * */
     @Override
+    @Transactional
     public Employee moveEmployeeToDepartment(EmployeeDepartmentUpdate update, Long principalId) {
 
+
+        /* When moving an employee, change their reporting manager. If others report
+            to the moved employee, they shouldn't have a reporting manager. */
+
         Employee employee = this.fetchService.findEmployeeByIdElseThrow(update.movableEmployeeId(), "Couldn't move employee as employee cannot be found!");
+
+
         if(employee.getDepartment() != null && Objects.equals(employee.getDepartment().getDeptId(), update.deptId())){
             throw new EntityOperationFailureException("Employee is already part of the department!");
         }
 
         if(Role.BRANCH_DEPARTMENT_HEAD.getRolesAbove().contains(employee.getRole())){
-            throw new EmployeeCannotBeMovedException("Employee cannot be moved as the role of the current employee");
-        }
-
-        if(employee.getRole() == Role.BRANCH_DEPARTMENT_HEAD){
-            Department department = this.departmentService.assignNewHeadForDept(update, principalId);
-            return department.getDeptHead();
+            throw new EmployeeCannotBeMovedException("Only employees below the branch manager can be assigned to a department!");
         }
 
 
@@ -199,14 +200,26 @@ class EmployeeServiceImpl implements EmployeeService
 
         /* Check is principal has permissions to do updates on the department which employee should be moved to */
         final Department deptTobeMovedTo = this.fetchService.findDepartmentByIdElseThrow(update.deptId(), "Failed to find the department!");
-        if(!deptTobeMovedTo.getIsActive()){
+
+
+        if(employee.getRole() == Role.BRANCH_DEPARTMENT_HEAD && deptTobeMovedTo.getDeptHead() == null)
+        {
+            Department department = this.departmentService.assignNewHeadForDept(deptTobeMovedTo, employee, false, null, true);
+            return department.getDeptHead();
+        }
+        else if (employee.getRole() == Role.BRANCH_DEPARTMENT_HEAD) {
+            throw new EntityOperationFailureException("The department already has a department head, thus the employee cannot be moved!");
+        }
+        else if(!deptTobeMovedTo.getIsActive()){
             throw new DepartmentNotActiveException();
         }
+
+
         this.authorizationService.validateUserPermissionsForDepartment(deptTobeMovedTo, roleAndBranch);
 
 
         /* Check if employee is team lead of any department if so update junior/senior assistants reporting manager */
-        if(employee.getRole() == Role.TEAM_LEAD){
+        if(employee.getRole() == Role.TEAM_LEAD) {
             this.employeeRepo.updateRmForLowLevelEmployees(employee, null);
         }
 

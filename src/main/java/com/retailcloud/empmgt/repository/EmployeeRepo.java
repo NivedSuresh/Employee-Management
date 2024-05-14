@@ -49,4 +49,7 @@ public interface EmployeeRepo extends JpaRepository<Employee, Long>, PagingAndSo
     @Modifying
     @Query("UPDATE Employee as e set e.reportingManager = :newRm where e.reportingManager = :prevRm")
     void updateRmForLowLevelEmployees(Employee prevRm, Employee newRm);
+
+    Optional<List<Employee>> findByDepartmentAndExitDate(Department department, LocalDateTime exitDate);
+
 }
