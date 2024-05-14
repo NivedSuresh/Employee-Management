@@ -31,16 +31,15 @@ import java.time.LocalDate;
  * NB: The initialization of this Employee only occurs if the application is running on the 'sim/test/dev' profile.
  */
 @RequiredArgsConstructor
-@Profile({"sim", "test", "dev"})
+@Profile({"sim", "test", "dev", "local"})
 @Slf4j
 @Component
-public class InitialInsertionIfNotExists{
+public class InitialInsertionIfNotExists implements CommandLineRunner{
 
     private final EmployeeRepo employeeRepo;
 
-    @PostConstruct
-    public void run() {
-
+    @Override
+    public void run(String... args) throws Exception {
         log.warn("Initial Employee Insertion has been triggered. Ensure the project is not running in production.");
 
         if(this.employeeRepo.existsById(1L)){
