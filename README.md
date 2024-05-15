@@ -45,3 +45,22 @@ NB: Throughout the project, comments are added to each and every method, and the
        * How the application functions logically can be improved as well.
        * Implementing in-memory caching.
        * Integration of Swagger for better API documentation and testing.
+
+
+<p></p><br><br>
+
+1. ##### Add a CHIEF_OPERATING_OFFICER (COO):
+    * Use 1 as the principal ID.
+2. ##### Create a Branch:
+    * This involves creating a new branch within the organizational structure.
+3.  ##### Add a BRANCH_MANAGER to that branch:
+    * Assign a manager to oversee the operations of the newly created branch.
+4. ##### Create a department without a BRANCH_DEPARTMENT_HEAD:
+    * When creating a department, set the "activate" flag as false in the request body to indicate that it's inactive until a department head is assigned.
+5. ##### Create a BRANCH_DEPARTMENT_HEAD for the newly created department:
+    * Once the department is created, assign a BRANCH_DEPARTMENT_HEAD to it. This will activate the department for further use.
+6. ##### The department will be activated as now a head is assigned to it:
+    * Confirm that the department is now active since a department head has been assigned.
+7. ##### Create TEAM_LEAD && JUNIOR/SENIOR_ASSISTANT
+    * Proceed to create team leads and junior/senior assistants within the department structure.
+      If you're facing issues with any specific step or need further guidance on implementation details, feel free to ask!
