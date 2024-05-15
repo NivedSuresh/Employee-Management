@@ -45,6 +45,7 @@ class IDepartmentService implements DepartmentService {
     private final FetchService fetchService;
     private final EmployeeRepo employeeRepo;
     private final AuthorizationService authorizationService;
+    private final ModelMapper modelMapper;
 
 
 
@@ -229,13 +230,8 @@ class IDepartmentService implements DepartmentService {
         Page<Department> departmentPage = this.departmentRepo.findAllByDeleted(false, pageRequest);
 
         List<DepartmentDto> departmentDtos = departmentPage.getContent().stream().map(ModelMapper::toDto).toList();
-        return PagedEntity.<DepartmentDto>builder()
-                .entityList(departmentDtos)
-                .page(page)
-                .hasNext(departmentPage.hasNext())
-                .hasPrev(departmentPage.hasPrevious())
-                .totalPages(departmentPage.getTotalPages())
-                .build();
+
+        return modelMapper.toPagedEntity(departmentPage, departmentDtos, page);
     }
 
 

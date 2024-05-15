@@ -1,5 +1,6 @@
 package com.retailcloud.empmgt.model.payload;
 
+import com.retailcloud.empmgt.model.Projection.lookup.EmployeeLookup;
 import com.retailcloud.empmgt.model.entity.enums.Role;
 import lombok.*;
 
@@ -14,7 +15,7 @@ import java.time.LocalDateTime;
 @Setter
 @Getter
 @ToString
-public class EmployeeDto {
+public class EmployeeDto implements EmployeeLookup {
 
     private Long employeeId;
 

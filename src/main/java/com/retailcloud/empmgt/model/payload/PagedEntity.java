@@ -10,6 +10,7 @@ import java.util.List;
 @Builder
 @Getter
 @Setter
+@ToString
 public class PagedEntity<E> {
     private List<E> entityList;
     private int page;

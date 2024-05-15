@@ -6,13 +6,14 @@ import com.retailcloud.empmgt.model.Projection.PrincipalRoleAndBranch;
 import com.retailcloud.empmgt.model.entity.Branch;
 import com.retailcloud.empmgt.model.entity.Department;
 import com.retailcloud.empmgt.model.entity.Employee;
-import com.retailcloud.empmgt.model.Projection.EmployeeInfo;
 import com.retailcloud.empmgt.model.entity.enums.Role;
 import com.retailcloud.empmgt.repository.BranchRepo;
 import com.retailcloud.empmgt.repository.DepartmentRepo;
 import com.retailcloud.empmgt.repository.EmployeeRepo;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -104,6 +105,18 @@ public class FetchService {
     }
 
     public List<Employee> findByRoleAndDepartmentElseEmpty(Role role, Department department, LocalDateTime exitDate) {
-        return this.employeeRepo.findByRoleAndDepartmentAndExitDate(role, department, exitDate).orElse(List.of());
+        return this.employeeRepo.findActiveEmployeesByRoleAndDepartmentAndExitDate(role, department, exitDate).orElse(List.of());
+    }
+
+    public Page<Employee> findEmployeesByDepartmentIdElseEmpty(Long deptId, LocalDateTime exit, PageRequest pageRequest) {
+        return this.employeeRepo.findActiveEmployeesByDepartmentAndExitDate(deptId, pageRequest);
+    }
+
+    public Page<Employee> findEmployeesByDepartmentIdAndRoleElseEmpty(Long deptId, Role role, LocalDateTime exit, PageRequest pageRequest) {
+        return this.employeeRepo.findActiveEmployeesByRoleAndDepartmentAndExitDate(role, deptId, pageRequest);
+    }
+
+    public List<Employee> findReporteesByReportingManager(Employee employee) {
+        return this.employeeRepo.findAllByReportingManager(employee).orElse(List.of());
     }
 }

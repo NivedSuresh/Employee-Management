@@ -3,20 +3,24 @@ package com.retailcloud.empmgt.service.Employee;
 import com.retailcloud.empmgt.advice.exception.*;
 import com.retailcloud.empmgt.config.RolesConfig.CompanyRoles;
 import com.retailcloud.empmgt.model.Projection.PrincipalRoleAndBranch;
+import com.retailcloud.empmgt.model.Projection.lookup.EmployeeLookup;
 import com.retailcloud.empmgt.model.entity.*;
 import com.retailcloud.empmgt.model.entity.enums.Role;
-import com.retailcloud.empmgt.model.payload.EmployeeDepartmentUpdate;
-import com.retailcloud.empmgt.model.payload.NewEmployee;
+import com.retailcloud.empmgt.model.payload.*;
 import com.retailcloud.empmgt.repository.EmployeeRepo;
 import com.retailcloud.empmgt.service.AuthorizationService;
 import com.retailcloud.empmgt.service.Department.DepartmentService;
 import com.retailcloud.empmgt.service.FetchService;
 import com.retailcloud.empmgt.utils.mapper.ModelMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -32,6 +36,7 @@ class EmployeeServiceImpl implements EmployeeService
     private final CompanyRoles companyRoles;
     private final DepartmentService departmentService;
     private final AuthorizationService authorizationService;
+    private final ModelMapper modelMapper;
 
 
     @Transactional(propagation = Propagation.REQUIRED)
@@ -228,6 +233,65 @@ class EmployeeServiceImpl implements EmployeeService
         return this.employeeRepo.save(employee);
     }
 
+    @Override
+    public PagedEntity<? extends EmployeeLookup> fetchAllByExitDate(LocalDateTime exitDate, Integer page, Integer count, Boolean lookup) {
+        if(page == null || page < 1) page = 1;
+        if(count == null || count < 1) count = 20;
+        if(count > 30) count = 30;
+
+        PageRequest pageRequest = PageRequest.of(page - 1, count);
+
+        if(lookup == null) lookup = false;
+
+        if(lookup){
+            Page<EmployeeLookup> employeeLookups = this.employeeRepo.lookupActiveEmployees(pageRequest);
+            return modelMapper.toPagedEntity(employeeLookups, employeeLookups.getContent(), page);
+        }
+
+        Page<Employee> employeePage = this.employeeRepo.findAllByExitDate(exitDate, pageRequest);
+
+        List<EmployeeDto> employeeDtos = employeePage.getContent().stream()
+                .map(employee -> modelMapper.toDto(employee, false, false))
+                .toList();
+
+        return modelMapper.toPagedEntity(employeePage, employeeDtos, page);
+    }
+
+    @Override
+    public DepartmentMeta expandDepartment(final Long deptId, final String expand, Integer page)
+    {
+        if(deptId == null) throw new DepartmentNotFoundException("Failed to find information about the department, please select a valid one.");
+
+        if(page == null || page < 1) page = 1;
+        PageRequest pageRequest = PageRequest.of(page - 1, 20);
+
+        Department department;
+        Page<Employee> employeePage;
+
+        switch (expand)
+        {
+            case "team_lead" -> employeePage = this.fetchService.findEmployeesByDepartmentIdAndRoleElseEmpty(deptId, Role.TEAM_LEAD, null, pageRequest);
+            case "dept_head" -> employeePage = this.fetchService.findEmployeesByDepartmentIdAndRoleElseEmpty(deptId, Role.BRANCH_DEPARTMENT_HEAD, null, pageRequest);
+            case "junior_assistant" -> employeePage = this.fetchService.findEmployeesByDepartmentIdAndRoleElseEmpty(deptId, Role.JUNIOR_ASSISTANT, null, pageRequest);
+            case "senior_assistant" -> employeePage = this.fetchService.findEmployeesByDepartmentIdAndRoleElseEmpty(deptId, Role.SENIOR_ASSISTANT, null, pageRequest);
+            default -> employeePage = this.fetchService.findEmployeesByDepartmentIdElseEmpty(deptId, null, pageRequest);
+        }
+
+        assert employeePage != null;
+        if(employeePage.isEmpty())
+        {
+            department = this.fetchService.findDepartmentByIdElseThrow(deptId, "Failed to find information about the department, please select a valid one.");
+            System.out.println("Size: " + this.fetchService.findByRoleAndDepartmentElseEmpty(Role.BRANCH_DEPARTMENT_HEAD, department, null).size());
+            PagedEntity<EmployeeDto> pagedEntity = this.modelMapper.toPagedEntity(employeePage, null, page);
+            return new DepartmentMeta(ModelMapper.toDto(department), pagedEntity);
+        }
+
+        List<EmployeeDto> employeeDtos = employeePage.stream().map(employee -> modelMapper.toDto(employee, false, false)).toList();
+        DepartmentDto departmentDto = employeeDtos.getFirst().getDepartment();
+
+        PagedEntity<EmployeeDto> pagedEntity = this.modelMapper.toPagedEntity(employeePage, employeeDtos, page);
+        return new DepartmentMeta(departmentDto, pagedEntity);
+    }
 
 
 }

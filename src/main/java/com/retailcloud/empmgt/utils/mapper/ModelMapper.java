@@ -114,4 +114,7 @@ public class ModelMapper {
                 .build();
     }
 
+    public <T> PagedEntity<T> toPagedEntity(Page<?> paged, List<T> entities, int page) {
+        return new PagedEntity<>(entities, page, paged.getTotalPages(), paged.hasNext(), paged.hasPrevious());
+    }
 }

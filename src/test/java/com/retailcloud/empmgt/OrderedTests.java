@@ -3,6 +3,7 @@ package com.retailcloud.empmgt;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.retailcloud.empmgt.advice.exception.DepartmentNotFoundException;
+import com.retailcloud.empmgt.model.Projection.lookup.EmployeeLookup;
 import com.retailcloud.empmgt.model.entity.Department;
 import com.retailcloud.empmgt.model.entity.Employee;
 import com.retailcloud.empmgt.model.payload.Message;
@@ -14,6 +15,9 @@ import com.retailcloud.empmgt.service.Branch.BranchService;
 import com.retailcloud.empmgt.service.Department.DepartmentService;
 import com.retailcloud.empmgt.service.Employee.EmployeeService;
 import com.retailcloud.empmgt.service.FetchService;
+import lombok.Data;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -33,7 +37,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
+import java.util.Random;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -727,6 +733,174 @@ class OrderedTests {
                     Assertions.assertTrue(pagedEntity.isHasNext());
                 });
 
+    }
+
+
+
+
+    private final AtomicLong currentDepartment = new AtomicLong(3);
+
+
+    @Test
+    @Order(19)
+    public void add2000EmployeesRandomlyToDepartmentsWithRandomRoles()
+    {
+
+        /* Creating 700 departments just be sure that currentDepartmentId
+           doesn't run past the total number of departments */
+        for(int i=0 ; i<700 ; i++){
+            NewDepartment newDepartment = new NewDepartment(
+                    UUID.randomUUID().toString(),
+                    null,
+                    false,
+                    1L
+            );
+            this.departmentService.addDepartment(newDepartment, 3L);
+        }
+
+
+
+        long headId = -1;
+        long leadId = -1;
+
+        for(int i=0 ; i<2000 ; i++)
+        {
+
+            Role randomRole = getRandomRole();
+
+
+            if(headId == -1 && randomRole == Role.BRANCH_DEPARTMENT_HEAD){
+                NewEmployee newEmployee = this.fakerService.getNewEmployee(randomRole, 3L, 1L, currentDepartment.get());
+                Employee employee = this.employeeService.addEmployee(newEmployee, 2L);
+
+                Assertions.assertSame(employee.getRole(), randomRole);
+                Assertions.assertEquals(employee.getReportingManager().getEmployeeId(), 3L);
+                Assertions.assertNull(employee.getReportingManager().getDepartment());
+                headId = employee.getEmployeeId();
+            }
+
+            else if(headId !=-1 && leadId == -1 && randomRole == Role.TEAM_LEAD){
+                NewEmployee newEmployee = this.fakerService.getNewEmployee(randomRole, headId, 1L, currentDepartment.get());
+                Employee employee = this.employeeService.addEmployee(newEmployee, 2L);
+                leadId = employee.getEmployeeId();
+
+
+                Assertions.assertSame(employee.getRole(), randomRole);
+                Assertions.assertEquals(employee.getReportingManager().getEmployeeId(), headId);
+                Assertions.assertEquals(employee.getReportingManager().getDepartment().getDeptId(), employee.getDepartment().getDeptId());
+            }
+
+            else if(headId != -1 && leadId != -1 && (randomRole == Role.JUNIOR_ASSISTANT || randomRole == Role.SENIOR_ASSISTANT)){
+                NewEmployee newEmployee = this.fakerService.getNewEmployee(randomRole, leadId, 1L, currentDepartment.get());
+                Employee employee = this.employeeService.addEmployee(newEmployee, 2L);
+
+
+
+                Assertions.assertSame(employee.getRole(), randomRole);
+                Assertions.assertEquals(employee.getReportingManager().getEmployeeId(), leadId);
+                Assertions.assertEquals(employee.getDepartment().getDeptHead().getEmployeeId(), headId);
+                Assertions.assertEquals(employee.getReportingManager().getDepartment().getDeptId(), employee.getDepartment().getDeptId());
+
+                /* Assign multiple employees to same lead unless the condition below is met */
+                if(random.nextInt(5) < 2){
+                    headId = -1;
+                    leadId = -1;
+                    currentDepartment.set(currentDepartment.get() + 1);
+                }
+            }
+        }
+
+        if(headId == -1){
+            currentDepartment.set(currentDepartment.get() - 1);
+        }
+
+        /* Ensure if all deps with a dep head is activated */
+        for(long i = currentDepartment.get(); i>3 ; i--){
+            Department department = fetchService.findDepartmentByIdElseThrow(i, "");
+            Boolean isActive = department.getIsActive();
+            Assertions.assertTrue(isActive);
+        }
+
+    }
+
+
+    @Test
+    @Order(20)
+    public void expandEmployeesUnderDepartment() throws Exception{
+
+        String[] endpoints = {
+                "/department/"+currentDepartment.get()+"?expand=employee&page=1",
+                "/department/"+currentDepartment.get()+"?expand=dept_head&page=1",
+        };
+
+        for(String endpoint : endpoints){
+            this.mvc.perform(MockMvcRequestBuilders.get(endpoint))
+                    .andExpect(status().isOk())
+                    .andExpect(result -> {
+                        String contentAsString = result.getResponse().getContentAsString();
+                        DepartmentMeta departmentMeta = mapper.readValue(contentAsString, DepartmentMeta.class);
+
+
+                        List<EmployeeDto> entityList = departmentMeta.employees().getEntityList();
+
+
+                        Assertions.assertEquals(departmentMeta.departmentDto().getDeptId(), currentDepartment.get());
+                        Assertions.assertFalse(departmentMeta.employees().isHasPrev());
+                        Assertions.assertEquals(departmentMeta.employees().getPage(), 1);
+                        Assertions.assertEquals(entityList.getFirst().getDepartment().getDeptId(), currentDepartment.get());
+                    });
+        }
+    }
+
+
+    @Test
+    @Order(21)
+    public void employeeLookup() throws Exception {
+
+
+        this.mvc.perform(MockMvcRequestBuilders.get("/employee?lookup=true"))
+                .andExpect(status().isOk())
+                .andExpect(result -> {
+                    String contentAsString = result.getResponse().getContentAsString();
+                    PagedEntity<EmployeeLookupDto> pagedEntity = mapper.readValue(contentAsString, new TypeReference<PagedEntity<EmployeeLookupDto>>() {});
+
+                    Assertions.assertEquals(pagedEntity.getPage(), 1);
+                    Assertions.assertFalse(pagedEntity.isHasPrev());
+                });
+
+
+        this.mvc.perform(MockMvcRequestBuilders.get("/employee?lookup=false"))
+                .andExpect(status().isOk())
+                .andExpect(result -> {
+                    String contentAsString = result.getResponse().getContentAsString();
+                    PagedEntity<EmployeeDto> pagedEntity = mapper.readValue(contentAsString, new TypeReference<>() {
+                    });
+
+                    Assertions.assertEquals(pagedEntity.getPage(), 1);
+                    Assertions.assertFalse(pagedEntity.isHasPrev());
+                });
+    }
+
+
+
+
+    private final Random random = new Random();
+    private Role getRandomRole() {
+        int i = random.nextInt(1, 5);
+        switch (i){
+            case 1 -> {
+                return Role.BRANCH_DEPARTMENT_HEAD;
+            }
+            case 2 -> {
+                return Role.TEAM_LEAD;
+            }
+            case 3 -> {
+                return Role.JUNIOR_ASSISTANT;
+            }
+            default -> {
+                return Role.SENIOR_ASSISTANT;
+            }
+        }
     }
 
 

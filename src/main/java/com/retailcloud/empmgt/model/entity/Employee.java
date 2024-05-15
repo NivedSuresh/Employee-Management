@@ -50,7 +50,7 @@ public class Employee {
     private Double salary;
 
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reporting_manager_id")
     @ToString.Exclude
     private Employee reportingManager;

@@ -1,10 +1,14 @@
 package com.retailcloud.empmgt.repository;
 
 import com.retailcloud.empmgt.model.Projection.PrincipalRoleAndBranch;
+import com.retailcloud.empmgt.model.Projection.lookup.EmployeeLookup;
 import com.retailcloud.empmgt.model.entity.Branch;
 import com.retailcloud.empmgt.model.entity.Department;
 import com.retailcloud.empmgt.model.entity.Employee;
 import com.retailcloud.empmgt.model.entity.enums.Role;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -42,7 +46,7 @@ public interface EmployeeRepo extends JpaRepository<Employee, Long>, PagingAndSo
     @Query("UPDATE Employee as e set e.reportingManager = :newHead where e.branch = :branch and e.role = :role")
     Integer updateRmForDeptHeads(Branch branch, Employee newHead, Role role);
 
-    Optional<List<Employee>> findByRoleAndDepartmentAndExitDate(Role role, Department department, LocalDateTime exitDate);
+    Optional<List<Employee>> findActiveEmployeesByRoleAndDepartmentAndExitDate(Role role, Department department, LocalDateTime exitDate);
 
 
 
@@ -50,6 +54,20 @@ public interface EmployeeRepo extends JpaRepository<Employee, Long>, PagingAndSo
     @Query("UPDATE Employee as e set e.reportingManager = :newRm where e.reportingManager = :prevRm")
     void updateRmForLowLevelEmployees(Employee prevRm, Employee newRm);
 
-    Optional<List<Employee>> findByDepartmentAndExitDate(Department department, LocalDateTime exitDate);
+    Optional<List<Employee>> findActiveEmployeesByDepartmentAndExitDate(Department department, LocalDateTime exitDate);
 
+
+    Page<Employee> findAllByExitDate(LocalDateTime exitDate, Pageable pageable);
+
+    @Query("SELECT e FROM Employee e WHERE e.department.deptId = :deptId AND e.exitDate IS NULL")
+    Page<Employee> findActiveEmployeesByDepartmentAndExitDate(Long deptId, Pageable pageable);
+
+
+    @Query("select e from Employee as e where e.department.deptId = :deptId and e.role = :role and e.exitDate IS NULL")
+    Page<Employee> findActiveEmployeesByRoleAndDepartmentAndExitDate(Role role, Long deptId, Pageable pageable);
+
+    Optional<List<Employee>> findAllByReportingManager(Employee employee);
+
+    @Query("SELECT e from Employee as e where e.exitDate is NULL")
+    Page<EmployeeLookup> lookupActiveEmployees(Pageable pageRequest);
 }

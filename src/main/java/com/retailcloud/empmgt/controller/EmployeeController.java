@@ -1,13 +1,16 @@
 package com.retailcloud.empmgt.controller;
 
+import com.retailcloud.empmgt.model.Projection.lookup.EmployeeLookup;
 import com.retailcloud.empmgt.model.entity.Employee;
 import com.retailcloud.empmgt.model.payload.EmployeeDepartmentUpdate;
 import com.retailcloud.empmgt.model.payload.EmployeeDto;
 import com.retailcloud.empmgt.model.payload.NewEmployee;
+import com.retailcloud.empmgt.model.payload.PagedEntity;
 import com.retailcloud.empmgt.service.Employee.EmployeeService;
 import com.retailcloud.empmgt.utils.mapper.ModelMapper;
 import com.retailcloud.empmgt.utils.validation.PayloadValidator;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -62,5 +65,15 @@ public class EmployeeController {
         final Employee employee = this.employeeService.moveEmployeeToDepartment(update, principalId);
         return ResponseEntity.ok(this.modelMapper.toDto(employee, true, true));
     }
+
+    @GetMapping
+    public ResponseEntity<PagedEntity<? extends EmployeeLookup>> fetchEmployees(@RequestParam(value = "page", required = false) Integer page,
+                                                                                @RequestParam(value = "count", required = false) Integer count,
+                                                                                @RequestParam(value = "lookup", required = false) Boolean lookup)
+    {
+
+        return ResponseEntity.ok(this.employeeService.fetchAllByExitDate(null, page, count, lookup));
+    }
+
 
 }

@@ -3,10 +3,10 @@ package com.retailcloud.empmgt.controller;
 import com.retailcloud.empmgt.model.payload.*;
 import com.retailcloud.empmgt.model.entity.Department;
 import com.retailcloud.empmgt.service.Department.DepartmentService;
+import com.retailcloud.empmgt.service.Employee.EmployeeService;
 import com.retailcloud.empmgt.utils.mapper.ModelMapper;
 import com.retailcloud.empmgt.utils.validation.PayloadValidator;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,14 +14,12 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 
 /**
  * Context Path = /api/management
  * <p></p>
- * Management endpoint's should be restricted from user's with out a management role.
- * ie devs, ops etc
+ * Management endpoint's should be restricted from user's without a management role.
+ * ie JUNIOR ASSISTANTS, SENIOR ASSISTANTS etc
  */
 @RequestMapping("/department")
 @RequiredArgsConstructor
@@ -31,6 +29,7 @@ public class DepartmentController {
 
     private final DepartmentService departmentService;
     private final ModelMapper modelMapper;
+    private final EmployeeService employeeService;
 
     /**
      * Trims white spaces from user input.
@@ -57,6 +56,10 @@ public class DepartmentController {
     }
 
 
+    /**
+     * Only authorized user's should be able to access this endpoint.
+     * ie BranchManagers, COO, Initial acc
+     **/
     @PutMapping("/head")
     public ResponseEntity<DepartmentDto> updateDepartmentHead(@Validated @RequestBody final EmployeeDepartmentUpdate update,
                                                               @RequestHeader(HttpHeaders.AUTHORIZATION) final Long principalId){
@@ -79,9 +82,17 @@ public class DepartmentController {
 
 
     @GetMapping
-    public ResponseEntity<PagedEntity<DepartmentDto>> fetchAllDepartments(@RequestParam(value = "page", required = false) Integer page, @RequestParam(value = "count", required = false) Integer count){
+    public ResponseEntity<PagedEntity<DepartmentDto>> fetchAllDepartments(@RequestParam(value = "page", required = false) Integer page,
+                                                                          @RequestParam(value = "count", required = false) Integer count){
         PagedEntity<DepartmentDto> pagedEntity = this.departmentService.fetchDepartments(page, count);
         return ResponseEntity.ok(pagedEntity);
+    }
+
+    @GetMapping("{dept_id}")
+    public ResponseEntity<DepartmentMeta> expandEmployeesUnderDepartment(@PathVariable final Long dept_id,
+                                                                         @RequestParam(value = "expand", required = false) final String expand,
+                                                                         @RequestParam(value = "page", required = false) Integer page){
+        return ResponseEntity.ok(this.employeeService.expandDepartment(dept_id, expand, page));
     }
 
 }
