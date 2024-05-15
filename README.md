@@ -37,17 +37,7 @@ Additionally, the project has comments added to each method, and the test cases 
 
 NB: Throughout the project, comments are added to each and every method, and the test cases are also well-documented.
 
-<br>
-
-#### Improvements that can be Made
-
-       * Methods could have been made easier to debug if less emphasis was placed on DRY principles and they were split up. (Realized this too late in the project.)
-       * How the application functions logically can be improved as well.
-       * Implementing in-memory caching.
-       * Integration of Swagger for better API documentation and testing.
-
-
-<p></p><br><br>
+<p></p><br>
 
 1. ##### Add a CHIEF_OPERATING_OFFICER (COO):
     * Use 1 as the principal ID.
@@ -63,4 +53,15 @@ NB: Throughout the project, comments are added to each and every method, and the
     * Confirm that the department is now active since a department head has been assigned.
 7. ##### Create TEAM_LEAD && JUNIOR/SENIOR_ASSISTANT
     * Proceed to create team leads and junior/senior assistants within the department structure.
-      If you're facing issues with any specific step or need further guidance on implementation details, feel free to ask!
+      If you're facing issues with any specific step or need further guidance on implementation details, feel free to get back to me through mail!
+
+      
+<p></p><br>
+
+#### Improvements that can be Made
+
+       * Methods could have been made easier to debug if less emphasis was placed on DRY principles and they were split up. (Realized this too late in the project.)
+       * How the application functions logically can be improved as well.
+       * Implementing in-memory caching.
+       * Integration of Swagger for better API documentation and testing.
+
