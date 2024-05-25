@@ -1,6 +1,4 @@
-### Retail Cloud Employee Management
-<br>
-Contact: 9744901947, nivedspvt@gmail.com
+### Retail Cloud Employee Management (Contact: 9744901947, nivedspvt@gmail.com)
 <br><br>
 #### How to Run:
 
