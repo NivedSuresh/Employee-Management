@@ -1,5 +1,16 @@
 ### Retail Cloud Employee Management (Contact: 9744901947, nivedspvt@gmail.com)
 <br><br>
+
+
+#### Improvements that can be Made
+
+
+       * Methods could have been made easier to debug if less emphasis was placed on DRY principles and they were split up. (Realized this too late in the project.)
+       * Exception Handling, Instead of over using database constraints all checks should be handled from server side for better error messages.
+       * Implementing in-memory caching.
+       * Integration of Swagger for better API documentation and testing.
+
+<br><br>
 #### How to Run:
 
 The application depends on PostgreSQL as its database. By default, the application runs on the 'local' profile, which utilizes the locally running PostgreSQL. Please adjust the connection string and credentials inside application-local.properties if you want to make any changes.
@@ -57,13 +68,4 @@ NB: Throughout the project, comments are added to each and every method, and the
 
       
 <p></p><br>
-
-#### Improvements that can be Made
-
-
-       * Methods could have been made easier to debug if less emphasis was placed on DRY principles and they were split up. (Realized this too late in the project.)
-       * Exception Handling, Instead of over using database constraints all checks should be handled from server side for better error messages.
-       * How the application functions logically can be improved as well.
-       * Implementing in-memory caching.
-       * Integration of Swagger for better API documentation and testing.
 
