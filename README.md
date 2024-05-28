@@ -62,7 +62,7 @@ NB: Throughout the project, comments are added to each and every method, and the
 
 
        * Methods could have been made easier to debug if less emphasis was placed on DRY principles and they were split up. (Realized this too late in the project.)
-       * Exception Handling, Instead of using database constraints checks should be handled from server side.
+       * Exception Handling, Instead of over using database constraints all checks should be handled from server side for better error messages.
        * How the application functions logically can be improved as well.
        * Implementing in-memory caching.
        * Integration of Swagger for better API documentation and testing.
